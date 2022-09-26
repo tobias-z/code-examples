@@ -8,7 +8,7 @@ public class FileRoute extends RouteBuilder {
 
 	@Override
 	public void configure() throws Exception {
-		from("file:camel/input")
+		from("file:camel/output")
 			.routeId("file-route")
 			.log("Body: ${body}")
 			.doTry()
