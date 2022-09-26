@@ -9,3 +9,7 @@ HelpLafayetteEscape process.
 ## Forms
 
 Forms are deployed with the bpmn through providing the json of each of them to the user tasks
+
+## Camel
+
+There is a small example of integrating camunda into a camel workflow
