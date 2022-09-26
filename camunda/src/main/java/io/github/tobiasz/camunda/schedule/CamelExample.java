@@ -13,7 +13,7 @@ public class CamelExample extends RouteBuilder {
 
 	@Override
 	public void configure() throws Exception {
-		from("file:camel/output")
+		this.from("file:camel/output")
 			.routeId("camunda-with-camel")
 			.process(exchange -> this.camundaProcessService.startProcess("HelpLafayetteEscape"));
 	}

@@ -1,6 +1,5 @@
 package io.github.tobiasz.camunda.schedule;
 
-import io.camunda.zeebe.client.ZeebeClient;
 import io.github.tobiasz.camunda.service.CamundaProcessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
