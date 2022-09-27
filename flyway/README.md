@@ -11,5 +11,5 @@ It is possible to do things like
 
 ## Resources
 
-[How flyway works](https://flywaydb.org/documentation/getstarted/how)
-[Migration concepts](https://flywaydb.org/documentation/concepts/migrations#naming)
+- [How flyway works](https://flywaydb.org/documentation/getstarted/how)
+- [Migration concepts](https://flywaydb.org/documentation/concepts/migrations#naming)
