@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package io.github.tobiasz;
+
+option java_multiple_files = true;
+
+service BookAuthorService {
+  // Unary -> Synchronous
+  rpc getAuthor(Author) returns (Author);
+
+  // Streaming -> Async
+}
+
+message Book {
+  int32 bookId = 1;
+  string title = 2;
+  float price = 3;
+  int32 pages = 4;
+  int32 authorId = 5;
+}
+
+message Author {
+  int32 authorId = 1;
+  string firstName = 2;
+  string lastName = 3;
+  string gender = 4;
+  int32 bookId = 5;
+}
