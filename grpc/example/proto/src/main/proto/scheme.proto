@@ -9,6 +9,7 @@ service BookAuthorService {
   rpc getAuthor(Author) returns (Author);
 
   // Streaming -> Async
+  rpc getBooksByAuthor(Author) returns (stream Book);
 }
 
 message Book {

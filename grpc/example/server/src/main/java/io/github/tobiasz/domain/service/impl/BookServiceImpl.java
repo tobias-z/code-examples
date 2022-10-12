@@ -3,7 +3,9 @@ package io.github.tobiasz.domain.service.impl;
 import io.github.tobiasz.Book;
 import io.github.tobiasz.domain.service.BookService;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
+@Service
 public class BookServiceImpl implements BookService {
 
 	@Override
