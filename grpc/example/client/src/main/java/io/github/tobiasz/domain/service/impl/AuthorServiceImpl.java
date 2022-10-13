@@ -8,6 +8,7 @@ import io.github.tobiasz.Book;
 import io.github.tobiasz.BookAuthorServiceGrpc;
 import io.github.tobiasz.domain.service.AuthorService;
 import io.grpc.stub.StreamObserver;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +31,11 @@ public class AuthorServiceImpl implements AuthorService {
 		return author.getAllFields();
 	}
 
+	@Override
 	public Map<String, Map<FieldDescriptor, Object>> getAuthorOfCheapestBook(List<Integer> bookIdList) {
 		return waitForMinutes(1, (countDownLatch) -> {
 			Map<String, Map<FieldDescriptor, Object>> result = new HashMap<>();
-			StreamObserver<Book> authorOfCheapestBook = this.asyncStub.getAuthorOfCheapestBook(new StreamObserver<>() {
-
+			StreamObserver<Book> streamObserver = this.asyncStub.getAuthorOfCheapestBook(new StreamObserver<>() {
 				@Override
 				public void onNext(Author author) {
 					result.put("cheapestBook", author.getAllFields());
@@ -55,10 +56,43 @@ public class AuthorServiceImpl implements AuthorService {
 
 			bookIdList.stream()
 				.map(id -> Book.newBuilder().setBookId(id).build())
-				.forEach(authorOfCheapestBook::onNext);
+				.forEach(streamObserver::onNext);
 
-			authorOfCheapestBook.onCompleted();
+			streamObserver.onCompleted();
 			return result;
+		});
+	}
+
+	@Override
+	public List<Map<FieldDescriptor, Object>> getAuthorsOfBooks(List<Integer> bookIdList) {
+		return waitForMinutes(1, (countDownLatch) -> {
+			List<Map<FieldDescriptor, Object>> authorList = new ArrayList<>();
+			StreamObserver<Book> streamObserver = this.asyncStub.getAuthorsOfBooks(new StreamObserver<>() {
+				@Override
+				public void onNext(Author author) {
+					authorList.add(author.getAllFields());
+				}
+
+				@Override
+				public void onError(Throwable throwable) {
+					System.out.println("got an error: " + throwable.getMessage());
+					countDownLatch.countDown();
+				}
+
+				@Override
+				public void onCompleted() {
+					System.out.println("completed the stream");
+					countDownLatch.countDown();
+				}
+			});
+
+			bookIdList.stream()
+				.map(id -> Book.newBuilder().setBookId(id).build())
+				.forEach(streamObserver::onNext);
+
+			streamObserver.onCompleted();
+
+			return authorList;
 		});
 	}
 

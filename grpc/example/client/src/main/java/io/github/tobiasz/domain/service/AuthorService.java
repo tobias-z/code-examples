@@ -10,4 +10,6 @@ public interface AuthorService {
 
 	Map<String, Map<FieldDescriptor, Object>> getAuthorOfCheapestBook(List<Integer> bookIdList);
 
+	List<Map<FieldDescriptor, Object>> getAuthorsOfBooks(List<Integer> bookIdList);
+
 }

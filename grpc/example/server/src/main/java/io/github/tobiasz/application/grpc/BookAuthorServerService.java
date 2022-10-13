@@ -86,7 +86,27 @@ public class BookAuthorServerService extends BookAuthorServiceGrpc.BookAuthorSer
 				responseObserver.onCompleted();
 			}
 		};
-
 	}
 
+	@Override
+	public StreamObserver<Book> getAuthorsOfBooks(StreamObserver<Author> responseObserver) {
+		return new StreamObserver<>() {
+			@Override
+			public void onNext(Book book) {
+				authorService.getAuthors().stream()
+					.filter(author -> author.getBookId() == book.getBookId())
+					.forEach(responseObserver::onNext);
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				responseObserver.onError(throwable);
+			}
+
+			@Override
+			public void onCompleted() {
+				responseObserver.onCompleted();
+			}
+		};
+	}
 }

@@ -37,4 +37,9 @@ public class BookController {
 		return this.authorService.getAuthorOfCheapestBook(bookIdList);
 	}
 
+	@PostMapping("authors-of-books")
+	public List<Map<FieldDescriptor, Object>> getAuthorsOfBooks(@RequestBody List<Integer> bookIdList) {
+		return this.authorService.getAuthorsOfBooks(bookIdList);
+	}
+
 }
