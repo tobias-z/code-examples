@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id "com.google.protobuf" version "0.8.15"
+}
+
+repositories {
+    mavenCentral()
+}
+
+def grpcVersion = "1.37.0"
+
+dependencies {
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "io.grpc:grpc-netty:${grpcVersion}"
+    implementation "javax.annotation:javax.annotation-api:1.3.2"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+}
+
+build {
+    protobuf {
+        generatedFilesBaseDir = "$projectDir/src"
+        protoc {
+            artifact = "com.google.protobuf:protoc:3.15.8"
+        }
+        plugins {
+            grpc {
+                artifact = "io.grpc:protoc-gen-grpc-java:1.36.1"
+            }
+        }
+        generateProtoTasks {
+            all()*.plugins {
+                grpc {}
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir "src/main/grpc"
+            srcDir "src/main/java"
+        }
+    }
+}
+
+task cleanProtoGen {
+    doFirst {
+        delete("src/main/grpc")
+        delete("src/main/java")
+    }
+}
+
+clean.dependsOn cleanProtoGen
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+group = "io.github.tobiasz"
+version = "0.0.1"
+sourceCompatibility = JavaVersion.VERSION_17

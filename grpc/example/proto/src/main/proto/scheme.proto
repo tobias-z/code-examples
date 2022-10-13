@@ -8,8 +8,14 @@ service BookAuthorService {
   // Unary -> Synchronous
   rpc getAuthor(Author) returns (Author);
 
-  // Streaming -> Async
+  // server streaming -> async
   rpc getBooksByAuthor(Author) returns (stream Book);
+
+  // client streaming -> async
+  rpc getAuthorOfCheapestBook(stream Book) returns (Author);
+
+  // bi directional streaming -> async
+  rpc getAuthorsOfBooks(stream Book) returns (stream Author);
 }
 
 message Book {

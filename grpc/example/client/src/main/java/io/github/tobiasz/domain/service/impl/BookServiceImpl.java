@@ -1,5 +1,7 @@
 package io.github.tobiasz.domain.service.impl;
 
+import static io.github.tobiasz.util.ThreadUtil.waitForMinutes;
+
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import io.github.tobiasz.Author;
 import io.github.tobiasz.Book;
@@ -9,8 +11,6 @@ import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Service;
 
@@ -28,8 +28,7 @@ public class BookServiceImpl implements BookService {
 	 */
 	@Override
 	public List<Map<FieldDescriptor, Object>> getBooksByAuthor(Integer authorId) {
-		try {
-			CountDownLatch countDownLatch = new CountDownLatch(1);
+		return waitForMinutes(1, (countDownLatch) -> {
 			Author request = Author.newBuilder().setAuthorId(authorId).build();
 			List<Map<FieldDescriptor, Object>> bookList = new ArrayList<>();
 			this.asyncStub.getBooksByAuthor(request, new StreamObserver<>() {
@@ -51,10 +50,7 @@ public class BookServiceImpl implements BookService {
 				}
 			});
 
-			countDownLatch.await(1, TimeUnit.MINUTES);
 			return bookList;
-		} catch (InterruptedException e) {
-			throw new RuntimeException("Was unable to complete the streaming of finding all books within a minute.");
-		}
+		});
 	}
 }

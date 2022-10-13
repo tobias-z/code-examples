@@ -1,6 +1,6 @@
 package io.github.tobiasz.hateos.controller;
 
-public interface IExampleService {
+public interface ExampleService {
 
 	void createThing();
 }

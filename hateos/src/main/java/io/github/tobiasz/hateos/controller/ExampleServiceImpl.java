@@ -1,10 +1,10 @@
 package io.github.tobiasz.hateos.controller;
 
-public class ExampleService implements IExampleService {
+public class ExampleServiceImpl implements ExampleService {
 
 	private final ExampleRepository repository;
 
-	public ExampleService(ExampleRepository repository) {
+	public ExampleServiceImpl(ExampleRepository repository) {
 		this.repository = repository;
 	}
 
