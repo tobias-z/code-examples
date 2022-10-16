@@ -8,7 +8,7 @@ public class ReactiveserverApplication {
 
     public static void main(String[] args) {
         ReactiveEndpointBuilder reactiveEndpointBuilder = getReactiveEndpointBuilder();
-        try (ReactiveServer server = new ReactiveServer("localhost", 8080, reactiveEndpointBuilder)) {
+        try (ReactiveServer server = new ReactiveServer("0.0.0.0", 9000, reactiveEndpointBuilder)) {
             server.start();
         } catch (Exception e) {
             e.printStackTrace();

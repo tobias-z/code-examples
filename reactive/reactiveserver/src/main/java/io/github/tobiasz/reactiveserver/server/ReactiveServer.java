@@ -2,6 +2,7 @@ package io.github.tobiasz.reactiveserver.server;
 
 import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder;
 import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder.CreatedEndpoint;
+import io.github.tobiasz.reactiveserver.core.publisher.Mono;
 import io.github.tobiasz.reactiveserver.request.ServerRequest;
 import io.github.tobiasz.reactiveserver.request.ServerRequestBuilder;
 import io.github.tobiasz.reactiveserver.response.ResponseDto;
@@ -50,23 +51,19 @@ public class ReactiveServer implements AutoCloseable {
             Iterator<SelectionKey> keys = this.selector.selectedKeys().iterator();
 
             while (keys.hasNext()) {
-                SelectionKey key = keys.next();
+                SelectionKey selectionKey = keys.next();
                 keys.remove();
 
-                if (!key.isValid()) {
+                if (!selectionKey.isValid()) {
                     continue;
                 }
 
-                if (key.isAcceptable()) {
-                    this.accept(key);
+                if (selectionKey.isAcceptable()) {
+                    this.accept(selectionKey);
                 }
 
-                if (key.isReadable()) {
-                    this.read(key);
-                }
-
-                if (key.isWritable()) {
-                    this.write(key);
+                if (selectionKey.isReadable()) {
+                    this.read(selectionKey);
                 }
             }
         }
@@ -100,17 +97,23 @@ public class ReactiveServer implements AutoCloseable {
         String request = new String(storage).replaceAll("\u0000.*", "");
         ServerRequest serverRequest = ServerRequestBuilder.buildRequestFromString(request);
 
-        // TODO: Wrap in subscribe
-        Optional<CreatedEndpoint> endpoint = this.getEndpoint(serverRequest);
-        if (endpoint.isPresent()) {
-            Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
-            // wrapper around the data to tell which status code we want to send back among others
-            key.attach(new ResponseDto(serverRequest, result));
-        } else {
-            key.attach(new ResponseDto(serverRequest, null));
-        }
-
-        key.interestOps(SelectionKey.OP_WRITE);
+        Mono.just(this.getEndpoint(serverRequest))
+            .map(endpoint -> endpoint
+                .map(createdEndpoint -> {
+                    Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
+                    return new ResponseDto(serverRequest, result);
+                })
+                .orElse(new ResponseDto(serverRequest, null)))
+            .subscribe(responseDto -> {
+                try {
+                    String response = ServerResponse.buildFromResponseDto(responseDto);
+                    channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
+                    channel.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .build();
     }
 
     private Optional<CreatedEndpoint> getEndpoint(ServerRequest serverRequest) {
@@ -122,14 +125,6 @@ public class ReactiveServer implements AutoCloseable {
                 return isSamePath && isSameRequestMethod;
             })
             .findFirst();
-    }
-
-    private void write(SelectionKey key) throws IOException {
-        ResponseDto responseDto = (ResponseDto) key.attachment();
-        SocketChannel channel = (SocketChannel) key.channel();
-        String response = ServerResponse.buildFromResponseDto(responseDto);
-        channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
-        channel.close();
     }
 
 }
