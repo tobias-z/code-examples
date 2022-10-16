@@ -4,6 +4,8 @@ import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder;
 import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder.CreatedEndpoint;
 import io.github.tobiasz.reactiveserver.request.ServerRequest;
 import io.github.tobiasz.reactiveserver.request.ServerRequestBuilder;
+import io.github.tobiasz.reactiveserver.response.ResponseDto;
+import io.github.tobiasz.reactiveserver.response.ServerResponse;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -11,6 +13,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -61,8 +64,19 @@ public class ReactiveServer implements AutoCloseable {
                 if (key.isReadable()) {
                     this.read(key);
                 }
+
+                if (key.isWritable()) {
+                    this.write(key);
+                }
             }
         }
+    }
+
+    private void accept(SelectionKey key) throws IOException {
+        ServerSocketChannel channel = (ServerSocketChannel) key.channel();
+        SocketChannel socketChannel = channel.accept();
+        socketChannel.configureBlocking(false);
+        socketChannel.register(this.selector, SelectionKey.OP_READ);
     }
 
     private void read(SelectionKey key) throws IOException {
@@ -75,6 +89,8 @@ public class ReactiveServer implements AutoCloseable {
         if (!isRequestWithData) {
             // this might be things such as telnet clients or socket connections.
             // Http requests will always at least send some headers
+            key.cancel();
+            channel.close();
             return;
         }
 
@@ -89,6 +105,9 @@ public class ReactiveServer implements AutoCloseable {
         if (endpoint.isPresent()) {
             Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
             // wrapper around the data to tell which status code we want to send back among others
+            key.attach(new ResponseDto(serverRequest, result));
+        } else {
+            key.attach(new ResponseDto(serverRequest, null));
         }
 
         key.interestOps(SelectionKey.OP_WRITE);
@@ -105,12 +124,12 @@ public class ReactiveServer implements AutoCloseable {
             .findFirst();
     }
 
-    private void accept(SelectionKey key) throws IOException {
-        System.out.println("accepting");
-        ServerSocketChannel channel = (ServerSocketChannel) key.channel();
-        SocketChannel socketChannel = channel.accept();
-        socketChannel.configureBlocking(false);
-        socketChannel.register(this.selector, SelectionKey.OP_READ);
+    private void write(SelectionKey key) throws IOException {
+        ResponseDto responseDto = (ResponseDto) key.attachment();
+        SocketChannel channel = (SocketChannel) key.channel();
+        String response = ServerResponse.buildFromResponseDto(responseDto);
+        channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
+        channel.close();
     }
 
 }

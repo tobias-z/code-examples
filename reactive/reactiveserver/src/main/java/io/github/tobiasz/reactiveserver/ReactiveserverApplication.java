@@ -11,6 +11,7 @@ public class ReactiveserverApplication {
         try (ReactiveServer server = new ReactiveServer("localhost", 8080, reactiveEndpointBuilder)) {
             server.start();
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -21,7 +22,26 @@ public class ReactiveserverApplication {
             .path("/hello-world")
             .requestMethod(RequestMethod.GET)
             .reactiveEndpoint(serverRequest -> "hello world")
+            .createEndpoint()
+
+            .endpoint()
+            .path("/example")
+            .requestMethod(RequestMethod.GET)
+            .reactiveEndpoint(serverRequest -> {
+                String name = serverRequest.getQueryParams().get("name");
+                return new Person(name);
+            })
+            .createEndpoint()
+
+            .endpoint()
+            .path("/something")
+            .requestMethod(RequestMethod.GET)
+            .reactiveEndpoint(serverRequest -> 100)
             .createEndpoint();
+    }
+
+    record Person(String name) {
+
     }
 
 }

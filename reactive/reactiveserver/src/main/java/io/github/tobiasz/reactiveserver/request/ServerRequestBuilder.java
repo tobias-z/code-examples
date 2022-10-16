@@ -14,20 +14,7 @@ public class ServerRequestBuilder {
         // first line is always the requested resource such as 'GET /something HTTP/1.1
         String[] requestedResource = lines[0].split(" ");
         serverRequest.setRequestMethod(RequestMethod.valueOf(requestedResource[0]));
-        String pathWithQueries = requestedResource[1];
-        int queryIndex = pathWithQueries.indexOf("?");
-        String path = pathWithQueries.substring(0, queryIndex);
-        serverRequest.setRequestPath(path);
-
-        String queries = pathWithQueries.substring(queryIndex + 1);
-        if (queries.length() != 0) {
-            for (String query : queries.split("&")) {
-                int beginIndex = query.indexOf("=");
-                String key = query.substring(0, beginIndex);
-                String value = queries.substring(beginIndex + 1);
-                serverRequest.getQueryParams().put(key, value);
-            }
-        }
+        setPathAndQueryParams(serverRequest, requestedResource[1]);
 
         int i = 1;
         String currLine = lines[i];
@@ -40,6 +27,25 @@ public class ServerRequestBuilder {
         // I have no idea why these are unable to be concatenated?????
         serverRequest.setUrl(serverRequest.getHeaders().get("Host") + serverRequest.getRequestPath());
         return i + 1;
+    }
+
+    private static void setPathAndQueryParams(ServerRequest serverRequest, String fullPath) {
+        if (!fullPath.contains("?")) {
+            serverRequest.setRequestPath(fullPath);
+            return;
+        }
+        int queryIndex = fullPath.indexOf("?");
+        String path = fullPath.substring(0, queryIndex);
+        serverRequest.setRequestPath(path);
+        String queries = fullPath.substring(queryIndex + 1);
+        if (queries.length() != 0) {
+            for (String query : queries.split("&")) {
+                int beginIndex = query.indexOf("=");
+                String key = query.substring(0, beginIndex);
+                String value = queries.substring(beginIndex + 1);
+                serverRequest.getQueryParams().put(key, value);
+            }
+        }
     }
 
     private static String getRequestData(int i, String[] lines) {
