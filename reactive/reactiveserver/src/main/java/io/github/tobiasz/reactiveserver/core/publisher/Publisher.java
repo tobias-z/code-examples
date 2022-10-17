@@ -2,6 +2,8 @@ package io.github.tobiasz.reactiveserver.core.publisher;
 
 import io.github.tobiasz.reactiveserver.core.subscription.MappingSubscription;
 import io.github.tobiasz.reactiveserver.core.subscription.Subscription;
+import io.github.tobiasz.reactiveserver.core.util.VoidFunc;
+import java.util.Optional;
 
 public interface Publisher<T> {
 
@@ -13,6 +15,6 @@ public interface Publisher<T> {
 
     void build();
 
-    boolean publish();
+    Optional<VoidFunc> publish();
 
 }

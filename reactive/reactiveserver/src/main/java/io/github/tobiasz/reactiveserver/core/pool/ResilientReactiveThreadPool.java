@@ -1,17 +1,16 @@
 package io.github.tobiasz.reactiveserver.core.pool;
 
 import io.github.tobiasz.reactiveserver.core.publisher.Publisher;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ResilientReactiveThreadPool {
 
-    private final Map<Thread, ReactiveRunnable> reactiveRunnableMap = new HashMap<>();
+    private final Map<Thread, ReactiveRunnable> reactiveRunnableMap = new ConcurrentHashMap<>();
 
     private final int defaultPoolSize;
     private final int maxPublishersPerThread;
-    private volatile int count;
 
     public ResilientReactiveThreadPool(int defaultPoolSize, int maxPublishersPerThread) {
         this.defaultPoolSize = defaultPoolSize;
@@ -35,6 +34,7 @@ public class ResilientReactiveThreadPool {
     }
 
     public void addToPool(Publisher<?> publisher) {
+        // TODO: should be implemented using a load balancer strategy
         for (Entry<Thread, ReactiveRunnable> entry : this.reactiveRunnableMap.entrySet()) {
             Thread activeThread = entry.getKey();
             ReactiveRunnable runnable = entry.getValue();
@@ -42,15 +42,10 @@ public class ResilientReactiveThreadPool {
                 publisher.onComplete((unused) -> {
                     if (runnable.activePublisherSize() == 0 && this.reactiveRunnableMap.size() > this.defaultPoolSize) {
                         activeThread.interrupt();
-                        synchronized (this.reactiveRunnableMap) {
-                            this.reactiveRunnableMap.remove(activeThread);
-                        }
+                        this.reactiveRunnableMap.remove(activeThread);
                     }
                 });
-                synchronized (this) {
-                    runnable.addPublisher(publisher);
-                    this.notifyAll();
-                }
+                runnable.addPublisher(publisher);
                 return;
             }
         }

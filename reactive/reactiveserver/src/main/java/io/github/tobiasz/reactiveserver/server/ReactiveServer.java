@@ -53,15 +53,11 @@ public class ReactiveServer implements AutoCloseable {
                 SelectionKey selectionKey = keys.next();
                 keys.remove();
 
-                if (!selectionKey.isValid()) {
-                    continue;
-                }
-
-                if (selectionKey.isAcceptable()) {
+                if (selectionKey.isValid() && selectionKey.isAcceptable()) {
                     this.accept(selectionKey);
                 }
 
-                if (selectionKey.isReadable()) {
+                if (selectionKey.isValid() && selectionKey.isReadable()) {
                     this.respondToRequest(selectionKey);
                 }
             }
@@ -129,7 +125,9 @@ public class ReactiveServer implements AutoCloseable {
             .onComplete(unused -> {
                 try {
                     if (channel.isOpen()) {
+                        key.cancel();
                         channel.close();
+                        channel.socket().close();
                     }
                 } catch (IOException e) {
                     throw new RuntimeException("unable to close the channel connection");

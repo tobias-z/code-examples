@@ -1,9 +1,11 @@
 package io.github.tobiasz.reactiveserver.core.pool;
 
 import io.github.tobiasz.reactiveserver.core.publisher.Publisher;
+import io.github.tobiasz.reactiveserver.core.util.VoidFunc;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -37,8 +39,11 @@ public class ReactiveRunnable implements Runnable {
                 synchronized (this.publisherList) {
                     new ArrayList<>(this.publisherList).stream()
                         .filter(Objects::nonNull)
-                        .filter(Publisher::publish)
-                        .forEach(this.publisherList::remove);
+                        .forEach((publisher) -> {
+                            Optional<VoidFunc> publish = publisher.publish();
+                            this.publisherList.remove(publisher);
+                            publish.ifPresent(VoidFunc::doFn);
+                        });
                 }
             }
         }

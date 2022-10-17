@@ -7,8 +7,10 @@ import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription;
 import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription.SubscriptionType;
 import io.github.tobiasz.reactiveserver.core.subscription.MappingSubscription;
 import io.github.tobiasz.reactiveserver.core.subscription.Subscription;
+import io.github.tobiasz.reactiveserver.core.util.VoidFunc;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
@@ -53,11 +55,14 @@ public class Mono<T> implements Publisher<T> {
     }
 
     @Override
-    public boolean publish() {
+    public Optional<VoidFunc> publish() {
         this.publish(SubscriptionType.STANDARD);
-        boolean hasCompleted = this.hasSubscriptionType(SubscriptionType.COMPLETION);
-        this.publish(SubscriptionType.COMPLETION);
-        return hasCompleted && this.coreSubscriptionList.size() == 0;
+
+        if (this.hasSubscriptionType(SubscriptionType.COMPLETION)) {
+            return Optional.of(() -> this.publish(SubscriptionType.COMPLETION));
+        }
+
+        return Optional.empty();
     }
 
     private void notifyPublisherThread() {
