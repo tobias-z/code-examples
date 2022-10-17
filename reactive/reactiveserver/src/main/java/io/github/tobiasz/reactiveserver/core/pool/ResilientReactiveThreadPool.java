@@ -7,7 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ResilientReactiveThreadPool {
 
     // There is prob a more optimal solution that using this
-    private final List<PoolObject> poolObjectMap = new CopyOnWriteArrayList<>();
+    private final List<PoolObject> poolObjectList = new CopyOnWriteArrayList<>();
     private volatile int nextPoolIndex = 0;
 
     private final int defaultPoolSize;
@@ -28,38 +28,43 @@ public class ResilientReactiveThreadPool {
     private void newThreadInPool() {
         ReactiveRunnable runnable = new ReactiveRunnable(this.maxPublishersPerThread);
         Thread thread = new Thread(runnable);
-        this.poolObjectMap.add(new PoolObject(thread, runnable));
+        this.poolObjectList.add(new PoolObject(thread, runnable));
         thread.start();
     }
 
     public void addToPool(Publisher<?> publisher) {
-        PoolObject poolObject = this.poolObjectMap.get(this.nextPoolIndex);
+        PoolObject poolObject = this.poolObjectList.get(this.nextPoolIndex);
         this.setNextPoolIndex();
         Thread activeThread = poolObject.thread();
         ReactiveRunnable runnable = poolObject.reactiveRunnable();
-        if (runnable.canHandlePublisher()) {
-            publisher.onComplete((unused) -> {
-                if (runnable.activePublisherSize() == 0 && this.poolObjectMap.size() > this.defaultPoolSize) {
-                    activeThread.interrupt();
-                    this.poolObjectMap.remove(poolObject);
-                    this.setNextPoolIndex();
-                }
-            });
-            runnable.addPublisher(publisher);
-            return;
-        }
-        synchronized (this.poolObjectMap) {
-            this.newThreadInPool();
-        }
-        this.addToPool(publisher);
+        publisher.onComplete((unused) -> {
+            if (runnable.activePublisherSize() == 0 && this.poolObjectList.size() > this.defaultPoolSize) {
+                activeThread.interrupt();
+                this.poolObjectList.remove(poolObject);
+                this.setNextPoolIndex();
+            }
+        });
+        runnable.addPublisher(publisher);
     }
 
     /**
      * Other alternatives could be considered, but a simple Round-Robin does the job
      */
     private synchronized void setNextPoolIndex() {
-        if (this.nextPoolIndex + 1 < this.poolObjectMap.size()) {
+        this.trySetPoolIndex(0);
+    }
+
+    private synchronized void trySetPoolIndex(int tries) {
+        int size = this.poolObjectList.size();
+        if (tries >= size) {
+            this.newThreadInPool();
+            this.nextPoolIndex = size + 1;
+        }
+        if (this.nextPoolIndex + 1 < size) {
             this.nextPoolIndex++;
+            if (!this.poolObjectList.get(this.nextPoolIndex).reactiveRunnable().canHandlePublisher()) {
+                this.trySetPoolIndex(++tries);
+            }
         } else {
             this.nextPoolIndex = 0;
         }
