@@ -1,7 +1,6 @@
 package io.github.tobiasz.reactiveserver.server;
 
-import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder;
-import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder.CreatedEndpoint;
+import io.github.tobiasz.reactiveserver.server.ReactiveEndpointBuilder.CreatedEndpoint;
 import io.github.tobiasz.reactiveserver.core.publisher.Mono;
 import io.github.tobiasz.reactiveserver.request.ServerRequest;
 import io.github.tobiasz.reactiveserver.request.ServerRequestBuilder;
@@ -100,12 +99,14 @@ public class ReactiveServer implements AutoCloseable {
         Mono.just(this.getEndpoint(serverRequest))
             .map(endpoint -> endpoint
                 .map(createdEndpoint -> {
+                    System.out.println("called map");
                     Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
                     return new ResponseDto(serverRequest, result);
                 })
                 .orElse(new ResponseDto(serverRequest, null)))
             .subscribe(responseDto -> {
                 try {
+                    System.out.println("called subscribe");
                     String response = ServerResponse.buildFromResponseDto(responseDto);
                     channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
                     channel.close();

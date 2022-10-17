@@ -7,12 +7,12 @@ public interface Publisher<T> {
 
     Publisher<T> subscribe(Subscription<T> subscription);
 
-    Publisher<T> onComplete(Subscription<T> subscription);
+    void onComplete(Subscription<T> subscription);
 
     <K> Publisher<K> map(MappingSubscription<T, K> mappingSubscription);
 
     void build();
 
-    void publish();
+    boolean publish();
 
 }

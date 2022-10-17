@@ -1,6 +1,6 @@
 package io.github.tobiasz.reactiveserver.core.publisher;
 
-import io.github.tobiasz.reactiveserver.core.pool.ResilientThreadPool;
+import io.github.tobiasz.reactiveserver.core.pool.ResilientReactiveThreadPool;
 import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription;
 import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription.SubscriptionType;
 import io.github.tobiasz.reactiveserver.core.subscription.MappingSubscription;
@@ -27,16 +27,18 @@ public class Mono<T> implements Publisher<T> {
     }
 
     @Override
-    public Publisher<T> onComplete(Subscription<T> subscription) {
+    public void onComplete(Subscription<T> subscription) {
         this.coreSubscriptionList.add(new CoreSubscription<>(subscription, SubscriptionType.COMPLETION));
         this.notifyPublisherThread();
-        return this;
     }
 
     @Override
     public <K> Publisher<K> map(MappingSubscription<T, K> mappingSubscription) {
-        K k = mappingSubscription.doMap(this.data);
-        this.data = (T) k;
+        // TODO: fix this
+        this.coreSubscriptionList.add(new CoreSubscription<>(data1 -> {
+            K k = mappingSubscription.doMap(data1);
+            this.data = (T) k;
+        }, SubscriptionType.STANDARD));
         this.notifyPublisherThread();
         return (Publisher<K>) this;
     }
@@ -47,23 +49,23 @@ public class Mono<T> implements Publisher<T> {
         this.notifyPublisherThread();
     }
 
-    private void notifyPublisherThread() {
-        synchronized (ResilientThreadPool.class) {
-            ResilientThreadPool.class.notifyAll();
-        }
-    }
-
     @Override
-    public void publish() {
-        if (this.hasStandardSubscriptions()) {
-            this.publish(SubscriptionType.STANDARD);
-            this.publish(SubscriptionType.COMPLETION);
+    public boolean publish() {
+        this.publish(SubscriptionType.STANDARD);
+        boolean hasCompleted = this.hasSubscriptionType(SubscriptionType.COMPLETION);
+        this.publish(SubscriptionType.COMPLETION);
+        return hasCompleted && this.coreSubscriptionList.size() == 0;
+    }
+
+    private void notifyPublisherThread() {
+        synchronized (ResilientReactiveThreadPool.class) {
+            ResilientReactiveThreadPool.class.notifyAll();
         }
     }
 
-    private boolean hasStandardSubscriptions() {
+    private boolean hasSubscriptionType(SubscriptionType subscriptionType) {
         for (CoreSubscription<T> coreSubscriptions : new ArrayList<>(this.coreSubscriptionList)) {
-            if (coreSubscriptions.isType(SubscriptionType.STANDARD)) {
+            if (coreSubscriptions.isType(subscriptionType)) {
                 return true;
             }
         }
@@ -77,5 +79,14 @@ public class Mono<T> implements Publisher<T> {
                 this.coreSubscriptionList.remove(coreSubscription);
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return """
+            size: %s,
+            data: %s,
+            list: %s,
+            """.formatted(this.coreSubscriptionList.size(), this.data, this.coreSubscriptionList);
     }
 }

@@ -1,4 +1,4 @@
-package io.github.tobiasz.reactiveserver.api;
+package io.github.tobiasz.reactiveserver.server;
 
 import io.github.tobiasz.reactiveserver.request.ServerRequest;
 

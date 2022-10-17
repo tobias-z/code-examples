@@ -1,7 +1,7 @@
 package io.github.tobiasz.reactiveserver;
 
-import io.github.tobiasz.reactiveserver.api.ReactiveEndpointBuilder;
 import io.github.tobiasz.reactiveserver.request.RequestMethod;
+import io.github.tobiasz.reactiveserver.server.ReactiveEndpointBuilder;
 import io.github.tobiasz.reactiveserver.server.ReactiveServer;
 
 public class ReactiveserverApplication {

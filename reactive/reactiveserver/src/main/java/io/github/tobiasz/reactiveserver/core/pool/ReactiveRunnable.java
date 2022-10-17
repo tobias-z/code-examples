@@ -3,6 +3,7 @@ package io.github.tobiasz.reactiveserver.core.pool;
 import io.github.tobiasz.reactiveserver.core.publisher.Publisher;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -29,17 +30,26 @@ public class ReactiveRunnable implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             this.await();
             if (this.publisherList.size() > 0) {
-                for (Publisher<?> publisher : new ArrayList<>(this.publisherList)) {
-                    publisher.publish();
+                System.out.println("size: " + this.publisherList.size());
+                synchronized (this.publisherList) {
+                    new ArrayList<>(this.publisherList).stream()
+                        .filter(Objects::nonNull)
+                        .filter(Publisher::publish)
+                        .forEach(this::remove);
                 }
             }
         }
     }
 
+    private void remove(Publisher<?> publisher) {
+        boolean success = this.publisherList.remove(publisher);
+        System.out.println("removed: " + publisher.toString() + ", success: " + success);
+    }
+
     private void await() {
-        synchronized (ResilientThreadPool.class) {
+        synchronized (ResilientReactiveThreadPool.class) {
             try {
-                ResilientThreadPool.class.wait();
+                ResilientReactiveThreadPool.class.wait();
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
