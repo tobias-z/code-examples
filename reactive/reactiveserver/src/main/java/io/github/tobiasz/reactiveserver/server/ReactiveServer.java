@@ -62,7 +62,7 @@ public class ReactiveServer implements AutoCloseable {
                 }
 
                 if (selectionKey.isReadable()) {
-                    this.read(selectionKey);
+                    this.respondToRequest(selectionKey);
                 }
             }
         }
@@ -75,7 +75,7 @@ public class ReactiveServer implements AutoCloseable {
         socketChannel.register(this.selector, SelectionKey.OP_READ);
     }
 
-    private void read(SelectionKey key) throws IOException {
+    private void respondToRequest(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         if (!channel.isOpen()) {
             return;
@@ -83,37 +83,56 @@ public class ReactiveServer implements AutoCloseable {
 
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         buffer.clear();
-        int read = channel.read(buffer);
 
-        boolean isRequestWithData = read != -1;
-        if (!isRequestWithData) {
-            // this might be things such as telnet clients or socket connections.
-            // Http requests will always at least send some headers
-            key.cancel();
-            channel.close();
-            return;
-        }
-
-        buffer.flip();
-        byte[] storage = new byte[1000];
-        buffer.get(storage, 0, read);
-        String request = new String(storage).replaceAll("\u0000.*", "");
-        ServerRequest serverRequest = ServerRequestBuilder.buildRequestFromString(request);
-
-        Mono.just(this.getEndpoint(serverRequest))
-            .map(endpoint -> endpoint
-                .map(createdEndpoint -> {
-                    Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
-                    return new ResponseDto(serverRequest, result);
-                })
-                .orElse(new ResponseDto(serverRequest, null)))
-            .subscribe(responseDto -> {
+        Mono.just(channel.read(buffer))
+            .map(read -> {
                 try {
-                    String response = ServerResponse.buildFromResponseDto(responseDto);
-                    channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
-                    channel.close();
+                    boolean isRequestWithData = read != -1;
+                    if (!isRequestWithData) {
+                        // this might be things such as telnet clients or socket connections.
+                        // Http requests will always at least send some headers
+                        key.cancel();
+                        channel.close();
+                        return null;
+                    }
+                    return read;
                 } catch (IOException e) {
                     throw new RuntimeException(e);
+                }
+            })
+            .map(read -> {
+                buffer.flip();
+                byte[] storage = new byte[1000];
+                buffer.get(storage, 0, read);
+                return new String(storage).replaceAll("\u0000.*", "");
+            })
+            .map(ServerRequestBuilder::buildRequestFromString)
+            .map(serverRequest -> {
+                Optional<CreatedEndpoint> endpoint = this.getEndpoint(serverRequest);
+                return endpoint
+                    .map(createdEndpoint -> {
+                        Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
+                        return new ResponseDto(serverRequest, result);
+                    })
+                    .orElse(new ResponseDto(serverRequest, null));
+            })
+            .subscribe(responseDto -> {
+                try {
+                    if (channel.isOpen()) {
+                        String response = ServerResponse.buildFromResponseDto(responseDto);
+                        channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .onComplete(unused -> {
+                try {
+                    if (channel.isOpen()) {
+                        channel.close();
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("unable to close the channel connection");
                 }
             })
             .build();

@@ -1,5 +1,7 @@
 package io.github.tobiasz.reactiveserver.core.publisher;
 
+import static java.util.Objects.isNull;
+
 import io.github.tobiasz.reactiveserver.core.pool.ResilientReactiveThreadPool;
 import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription;
 import io.github.tobiasz.reactiveserver.core.subscription.CoreSubscription.SubscriptionType;
@@ -27,9 +29,10 @@ public class Mono<T> implements Publisher<T> {
     }
 
     @Override
-    public void onComplete(Subscription<T> subscription) {
+    public Publisher<T> onComplete(Subscription<T> subscription) {
         this.coreSubscriptionList.add(new CoreSubscription<>(subscription, SubscriptionType.COMPLETION));
         this.notifyPublisherThread();
+        return this;
     }
 
     @Override
@@ -75,18 +78,12 @@ public class Mono<T> implements Publisher<T> {
     private void publish(SubscriptionType subscriptionType) {
         for (CoreSubscription<T> coreSubscription : new ArrayList<>(this.coreSubscriptionList)) {
             if (coreSubscription.isType(subscriptionType)) {
+                if (isNull(this.data) && !coreSubscription.isType(SubscriptionType.COMPLETION)) {
+                    continue;
+                }
                 coreSubscription.publish(this.data);
                 this.coreSubscriptionList.remove(coreSubscription);
             }
         }
-    }
-
-    @Override
-    public String toString() {
-        return """
-            size: %s,
-            data: %s,
-            list: %s,
-            """.formatted(this.coreSubscriptionList.size(), this.data, this.coreSubscriptionList);
     }
 }
