@@ -35,27 +35,23 @@ public class ResilientReactiveThreadPool {
     }
 
     public void addToPool(Publisher<?> publisher) {
-        synchronized (this.reactiveRunnableMap) {
-            System.out.println("trying to add to runnable: " + ++this.count + ", threadCount: " + this.reactiveRunnableMap.size());
-            for (Entry<Thread, ReactiveRunnable> entry : this.reactiveRunnableMap.entrySet()) {
-                Thread activeThread = entry.getKey();
-                ReactiveRunnable runnable = entry.getValue();
-                if (runnable.canHandlePublisher()) {
-                    publisher.onComplete((unused) -> {
-                        System.out.println("called onComplete");
-                        if (runnable.activePublisherSize() == 0 && this.reactiveRunnableMap.size() > this.defaultPoolSize) {
-                            activeThread.interrupt();
-                            synchronized (this.reactiveRunnableMap) {
-                                this.reactiveRunnableMap.remove(activeThread);
-                            }
+        for (Entry<Thread, ReactiveRunnable> entry : this.reactiveRunnableMap.entrySet()) {
+            Thread activeThread = entry.getKey();
+            ReactiveRunnable runnable = entry.getValue();
+            if (runnable.canHandlePublisher()) {
+                publisher.onComplete((unused) -> {
+                    if (runnable.activePublisherSize() == 0 && this.reactiveRunnableMap.size() > this.defaultPoolSize) {
+                        activeThread.interrupt();
+                        synchronized (this.reactiveRunnableMap) {
+                            this.reactiveRunnableMap.remove(activeThread);
                         }
-                    });
-                    synchronized (this) {
-                        runnable.addPublisher(publisher);
-                        this.notifyAll();
                     }
-                    return;
+                });
+                synchronized (this) {
+                    runnable.addPublisher(publisher);
+                    this.notifyAll();
                 }
+                return;
             }
         }
         this.newThreadInPool();

@@ -1,11 +1,11 @@
 package io.github.tobiasz.reactiveserver.server;
 
-import io.github.tobiasz.reactiveserver.server.ReactiveEndpointBuilder.CreatedEndpoint;
 import io.github.tobiasz.reactiveserver.core.publisher.Mono;
 import io.github.tobiasz.reactiveserver.request.ServerRequest;
 import io.github.tobiasz.reactiveserver.request.ServerRequestBuilder;
 import io.github.tobiasz.reactiveserver.response.ResponseDto;
 import io.github.tobiasz.reactiveserver.response.ServerResponse;
+import io.github.tobiasz.reactiveserver.server.ReactiveEndpointBuilder.CreatedEndpoint;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -77,6 +77,10 @@ public class ReactiveServer implements AutoCloseable {
 
     private void read(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
+        if (!channel.isOpen()) {
+            return;
+        }
+
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         buffer.clear();
         int read = channel.read(buffer);
@@ -99,14 +103,12 @@ public class ReactiveServer implements AutoCloseable {
         Mono.just(this.getEndpoint(serverRequest))
             .map(endpoint -> endpoint
                 .map(createdEndpoint -> {
-                    System.out.println("called map");
                     Object result = endpoint.get().getReactiveEndpoint().onPublish(serverRequest);
                     return new ResponseDto(serverRequest, result);
                 })
                 .orElse(new ResponseDto(serverRequest, null)))
             .subscribe(responseDto -> {
                 try {
-                    System.out.println("called subscribe");
                     String response = ServerResponse.buildFromResponseDto(responseDto);
                     channel.write(ByteBuffer.wrap(response.getBytes(StandardCharsets.UTF_8)));
                     channel.close();

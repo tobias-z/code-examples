@@ -13,16 +13,20 @@ public class ReactiveRunnable implements Runnable {
 
     private final int maxPublishers;
 
-    public synchronized boolean canHandlePublisher() {
+    public boolean canHandlePublisher() {
         return this.maxPublishers > this.activePublisherSize();
     }
 
-    public synchronized void addPublisher(Publisher<?> publisher) {
-        this.publisherList.add(publisher);
+    public void addPublisher(Publisher<?> publisher) {
+        synchronized (this.publisherList) {
+            this.publisherList.add(publisher);
+        }
     }
 
-    public synchronized int activePublisherSize() {
-        return this.publisherList.size();
+    public int activePublisherSize() {
+        synchronized (this.publisherList) {
+            return this.publisherList.size();
+        }
     }
 
     @Override
@@ -30,20 +34,14 @@ public class ReactiveRunnable implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             this.await();
             if (this.publisherList.size() > 0) {
-                System.out.println("size: " + this.publisherList.size());
                 synchronized (this.publisherList) {
                     new ArrayList<>(this.publisherList).stream()
                         .filter(Objects::nonNull)
                         .filter(Publisher::publish)
-                        .forEach(this::remove);
+                        .forEach(this.publisherList::remove);
                 }
             }
         }
-    }
-
-    private void remove(Publisher<?> publisher) {
-        boolean success = this.publisherList.remove(publisher);
-        System.out.println("removed: " + publisher.toString() + ", success: " + success);
     }
 
     private void await() {
