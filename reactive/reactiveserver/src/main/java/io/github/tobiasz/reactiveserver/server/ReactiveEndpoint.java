@@ -8,3 +8,4 @@ public interface ReactiveEndpoint<T> {
     T onPublish(ServerRequest serverRequest);
 
 }
+
