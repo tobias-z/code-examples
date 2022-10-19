@@ -35,11 +35,10 @@ public class ResilientReactiveThreadPool {
     public void addToPool(Publisher<?> publisher) {
         PoolObject poolObject = this.poolObjectList.get(this.nextPoolIndex);
         this.setNextPoolIndex();
-        Thread activeThread = poolObject.thread();
         ReactiveRunnable runnable = poolObject.reactiveRunnable();
         publisher.onComplete((unused) -> {
             if (runnable.activePublisherSize() == 0 && this.poolObjectList.size() > this.defaultPoolSize) {
-                activeThread.interrupt();
+                poolObject.thread().interrupt();
                 this.poolObjectList.remove(poolObject);
                 this.setNextPoolIndex();
             }
