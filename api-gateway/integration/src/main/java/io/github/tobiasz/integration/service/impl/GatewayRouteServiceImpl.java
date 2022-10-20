@@ -17,8 +17,9 @@ public class GatewayRouteServiceImpl implements GatewayRouteService {
     private final GatewayRouteRepository gatewayRouteRepository;
 
     @Override
-    public Flux<GatewayRoute> getAllGatewayRoutes() {
-        return gatewayRouteRepository.findAll();
+    public Flux<GatewayRouteDto> getAllGatewayRoutes() {
+        return gatewayRouteRepository.findAll()
+            .map(GatewayRouteDto::fromEntity);
     }
 
     public Mono<CreatedDto<String>> createGatewayRoute(GatewayRouteDto gatewayRouteDto) {

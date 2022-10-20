@@ -2,7 +2,7 @@ package io.github.tobiasz.integration.config;
 
 import static io.github.tobiasz.integration.config.RouteConstants.CATCH_ALL_FALLBACK;
 
-import io.github.tobiasz.integration.entity.GatewayRoute;
+import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.service.GatewayRouteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.route.Route;
@@ -29,9 +29,9 @@ public class RouteConfig implements RouteLocator {
             .flatMap(builder -> builder.build().getRoutes());
     }
 
-    private Builder buildRoute(Tuple2<GatewayRoute, Builder> objects) {
+    private Builder buildRoute(Tuple2<GatewayRouteDto, Builder> objects) {
         Builder builder = objects.getT2();
-        GatewayRoute gatewayRoute = objects.getT1();
+        GatewayRouteDto gatewayRoute = objects.getT1();
         // TODO: add stuff depending on the stuff in the database
         builder.route(gatewayRoute.getId(), predicateSpec -> {
             String requestPath = gatewayRoute.getRequestPath();
