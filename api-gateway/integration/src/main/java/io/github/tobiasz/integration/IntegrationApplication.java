@@ -2,8 +2,10 @@ package io.github.tobiasz.integration;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.mongodb.repository.config.EnableReactiveMongoRepositories;
 
 @SpringBootApplication
+@EnableReactiveMongoRepositories
 public class IntegrationApplication {
 
     public static void main(String[] args) {
