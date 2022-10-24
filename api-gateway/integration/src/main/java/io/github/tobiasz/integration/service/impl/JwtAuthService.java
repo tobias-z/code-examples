@@ -4,7 +4,6 @@ import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.service.AuthMethodService;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 @Service
 public class JwtAuthService implements AuthMethodService {
@@ -21,9 +20,9 @@ public class JwtAuthService implements AuthMethodService {
     }
 
     @Override
-    public Mono<Integer> authenticate(String token) {
+    public Optional<Integer> authenticate(String token) {
         // TODO: Actually do something
-        return Mono.just(1);
+        return Optional.of(1);
     }
 
 }

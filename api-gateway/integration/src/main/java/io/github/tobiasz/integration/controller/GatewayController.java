@@ -1,12 +1,11 @@
 package io.github.tobiasz.integration.controller;
 
-import static io.github.tobiasz.integration.config.RouteConstants.CATCH_ALL_FALLBACK;
+import static io.github.tobiasz.integration.config.Constants.CATCH_ALL_FALLBACK;
 
 import io.github.tobiasz.integration.dto.CreatedDto;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.service.GatewayRouteService;
 import javax.validation.Valid;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,5 +1,6 @@
 package io.github.tobiasz.integration.service;
 
+import io.github.tobiasz.integration.config.security.RouteRequestMatcher;
 import io.github.tobiasz.integration.dto.CreatedDto;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import reactor.core.publisher.Flux;
@@ -10,4 +11,6 @@ public interface GatewayRouteService {
     Flux<GatewayRouteDto> getAllGatewayRoutes();
 
     Mono<CreatedDto<String>> createGatewayRoute(GatewayRouteDto gatewayRouteDto);
+
+    Mono<GatewayRouteDto> getMatchingRouteFromPath(RouteRequestMatcher routeRequestMatcher);
 }

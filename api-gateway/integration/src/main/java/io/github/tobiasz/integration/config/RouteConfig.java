@@ -1,6 +1,6 @@
 package io.github.tobiasz.integration.config;
 
-import static io.github.tobiasz.integration.config.RouteConstants.CATCH_ALL_FALLBACK;
+import static io.github.tobiasz.integration.config.Constants.CATCH_ALL_FALLBACK;
 
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.service.GatewayRouteService;
