@@ -8,7 +8,7 @@ public class BasicAuthMethod implements AuthMethod {
 
     @Override
     public boolean canHandleMethod(String method) {
-        return method.strip().equals("Basic");
+        return method.strip().equalsIgnoreCase("Basic");
     }
 
     @Override

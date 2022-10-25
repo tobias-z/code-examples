@@ -8,7 +8,7 @@ public class JwtAuthMethod implements AuthMethod {
 
     @Override
     public boolean canHandleMethod(String method) {
-        return method.strip().equals("Bearer");
+        return method.strip().equalsIgnoreCase("Bearer");
     }
 
     @Override

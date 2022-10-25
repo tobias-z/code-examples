@@ -34,7 +34,7 @@ public interface AuthMethod {
                         return AuthStatus.NO_MATCH;
                     }
 
-                    if (remove.method().equals("NONE")) {
+                    if (remove.method().equalsIgnoreCase("NONE")) {
                         return AuthStatus.AUTHORIZED;
                     }
 

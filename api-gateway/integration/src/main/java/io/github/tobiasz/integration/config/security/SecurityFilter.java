@@ -1,7 +1,6 @@
 package io.github.tobiasz.integration.config.security;
 
-import static io.github.tobiasz.integration.Constants.USER_ID_HEADER;
-
+import io.github.tobiasz.integration.config.properties.SecurityProperties;
 import io.github.tobiasz.integration.config.security.authmethod.AuthMethod;
 import io.github.tobiasz.integration.config.security.util.AuthStatus;
 import io.github.tobiasz.integration.config.security.util.RouteRequestMatcher;
@@ -25,13 +24,14 @@ public class SecurityFilter extends WebFilterChainProxy {
 
     private final List<AuthMethod> authMethods;
     private final GatewayRouteService gatewayRouteService;
+    private final SecurityProperties securityProperties;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         // Make sure we don't have some cheeky hackers using a random user id
         HttpHeaders headers = exchange.getRequest()
             .mutate()
-            .headers(httpHeaders -> httpHeaders.remove(USER_ID_HEADER))
+            .headers(httpHeaders -> httpHeaders.remove(securityProperties.getUserIdHeaderName()))
             .build()
             .getHeaders();
 
@@ -58,8 +58,10 @@ public class SecurityFilter extends WebFilterChainProxy {
                         return Mono.error(new UnauthorizedException());
                     }
 
-                    ServerWebExchange exchangeWithUserId = exchange.mutate()
-                        .request(builder -> builder.header(USER_ID_HEADER, String.valueOf(userId.orElseThrow()))).build();
+                    ServerWebExchange exchangeWithUserId = exchange.mutate().request(builder -> builder.header(
+                        securityProperties.getUserIdHeaderName(),
+                        String.valueOf(userId.orElseThrow()))
+                    ).build();
                     return chain.filter(exchangeWithUserId);
                 })
             );
@@ -83,7 +85,7 @@ public class SecurityFilter extends WebFilterChainProxy {
             .orElse(null);
     }
 
-    public record AuthDto(String token, AuthMethod authMethod, GatewayRouteDto gatewayRouteDto) {
+    record AuthDto(String token, AuthMethod authMethod, GatewayRouteDto gatewayRouteDto) {
 
     }
 }
