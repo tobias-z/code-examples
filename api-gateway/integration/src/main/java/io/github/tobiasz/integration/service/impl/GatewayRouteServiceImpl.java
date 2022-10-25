@@ -1,10 +1,9 @@
 package io.github.tobiasz.integration.service.impl;
 
-import io.github.tobiasz.integration.config.security.RouteRequestMatcher;
+import io.github.tobiasz.integration.config.security.util.RouteRequestMatcher;
 import io.github.tobiasz.integration.dto.CreatedDto;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.entity.GatewayRoute;
-import io.github.tobiasz.integration.errorhandling.UnauthorizedException;
 import io.github.tobiasz.integration.repository.GatewayRouteRepository;
 import io.github.tobiasz.integration.service.GatewayRouteService;
 import java.util.ArrayList;
@@ -48,16 +47,13 @@ public class GatewayRouteServiceImpl implements GatewayRouteService {
     }
 
     private Mono<GatewayRouteDto> matches(Tuple2<GatewayRouteDto, RouteRequestMatcher> tuple2) {
-        return Flux.from(Mono.just(tuple2))
+        return Mono.just(tuple2)
             .filterWhen(o -> {
                 GatewayRouteDto routeDto = o.getT1();
                 RouteRequestMatcher matcher = o.getT2();
                 return matcher.matches(routeDto.getRequestPath());
             })
-            .map(Tuple2::getT1)
-            .collectList()
-            .filter(gatewayRouteDtos -> !gatewayRouteDtos.isEmpty())
-            .map(gatewayRouteDtos -> gatewayRouteDtos.get(0));
+            .map(Tuple2::getT1);
     }
 
 }

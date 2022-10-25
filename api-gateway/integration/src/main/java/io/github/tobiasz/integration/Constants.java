@@ -1,4 +1,4 @@
-package io.github.tobiasz.integration.config;
+package io.github.tobiasz.integration;
 
 public class Constants {
 

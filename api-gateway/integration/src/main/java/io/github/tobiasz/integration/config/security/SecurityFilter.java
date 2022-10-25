@@ -1,19 +1,18 @@
 package io.github.tobiasz.integration.config.security;
 
-import static io.github.tobiasz.integration.config.Constants.USER_ID_HEADER;
+import static io.github.tobiasz.integration.Constants.USER_ID_HEADER;
 
+import io.github.tobiasz.integration.config.security.authmethod.AuthMethod;
+import io.github.tobiasz.integration.config.security.util.AuthStatus;
+import io.github.tobiasz.integration.config.security.util.RouteRequestMatcher;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.errorhandling.UnauthorizedException;
-import io.github.tobiasz.integration.service.AuthMethodService;
 import io.github.tobiasz.integration.service.GatewayRouteService;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.web.server.WebFilterChainProxy;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
@@ -24,7 +23,7 @@ import reactor.util.function.Tuple2;
 @RequiredArgsConstructor
 public class SecurityFilter extends WebFilterChainProxy {
 
-    private final List<AuthMethodService> authMethodServices;
+    private final List<AuthMethod> authMethods;
     private final GatewayRouteService gatewayRouteService;
 
     @Override
@@ -36,26 +35,34 @@ public class SecurityFilter extends WebFilterChainProxy {
             .build()
             .getHeaders();
 
+        RouteRequestMatcher routeRequestMatcher = new RouteRequestMatcher(exchange);
         return getAuthHeader(headers)
-            .zipWith(gatewayRouteService.getMatchingRouteFromPath(getRouteRequestMatcher(exchange)))
+            .zipWith(gatewayRouteService.getMatchingRouteFromPath(routeRequestMatcher))
             .map(this::toAuthDto)
-            .flatMap(authDto -> {
-                boolean shouldAuthenticate = authDto.authMethodService.shouldAuthenticate(authDto.gatewayRouteDto());
-                if (!shouldAuthenticate) {
-                    return chain.filter(exchange);
-                }
+            .flatMap(dto -> dto.authMethod.shouldAuthenticate(routeRequestMatcher, dto.gatewayRouteDto())
+                .zipWith(Mono.just(dto))
+                .flatMap(tuple -> {
+                    AuthStatus authStatus = tuple.getT1();
+                    if (authStatus.equals(AuthStatus.AUTHORIZED)) {
+                        return chain.filter(exchange);
+                    }
 
-                Optional<Integer> userId = authDto.authMethodService.authenticate(authDto.token());
+                    if (authStatus.equals(AuthStatus.INVALID_METHOD)) {
+                        return Mono.error(new UnauthorizedException());
+                    }
 
-                if (userId.isEmpty()) {
-                    return Mono.empty();
-                }
+                    AuthDto authDto = tuple.getT2();
+                    Optional<Integer> userId = authDto.authMethod.authenticate(authDto.token());
 
-                ServerWebExchange exchangeWithUserId = exchange.mutate()
-                    .request(builder -> builder.header(USER_ID_HEADER, String.valueOf(userId.orElseThrow()))).build();
-                return chain.filter(exchangeWithUserId);
-            })
-            .switchIfEmpty(Mono.error(new UnauthorizedException()));
+                    if (userId.isEmpty()) {
+                        return Mono.error(new UnauthorizedException());
+                    }
+
+                    ServerWebExchange exchangeWithUserId = exchange.mutate()
+                        .request(builder -> builder.header(USER_ID_HEADER, String.valueOf(userId.orElseThrow()))).build();
+                    return chain.filter(exchangeWithUserId);
+                })
+            );
     }
 
     private static Mono<String[]> getAuthHeader(HttpHeaders headers) {
@@ -66,26 +73,17 @@ public class SecurityFilter extends WebFilterChainProxy {
             .filter(strings -> strings.length > 1);
     }
 
-    private static RouteRequestMatcher getRouteRequestMatcher(ServerWebExchange exchange) {
-        return matchAgainst -> ServerWebExchangeMatchers.pathMatchers(matchAgainst)
-            .matches(exchange)
-            .map(matchResult -> {
-                System.out.println(matchResult);
-                return matchResult.isMatch();
-            });
-    }
-
     private AuthDto toAuthDto(Tuple2<String[], GatewayRouteDto> tuple2) {
         String[] authHeader = tuple2.getT1();
-        return authMethodServices
+        return authMethods
             .stream()
-            .filter(authMethodService -> authMethodService.canHandleMethod(authHeader[0]))
+            .filter(authMethod -> authMethod.canHandleMethod(authHeader[0]))
             .findFirst()
-            .map(authMethodService -> new AuthDto(authHeader[1], authMethodService, tuple2.getT2()))
+            .map(authMethod -> new AuthDto(authHeader[1], authMethod, tuple2.getT2()))
             .orElse(null);
     }
 
-    record AuthDto(String token, AuthMethodService authMethodService, GatewayRouteDto gatewayRouteDto) {
+    public record AuthDto(String token, AuthMethod authMethod, GatewayRouteDto gatewayRouteDto) {
 
     }
 }

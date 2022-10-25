@@ -1,6 +1,6 @@
 package io.github.tobiasz.integration.service;
 
-import io.github.tobiasz.integration.config.security.RouteRequestMatcher;
+import io.github.tobiasz.integration.config.security.util.RouteRequestMatcher;
 import io.github.tobiasz.integration.dto.CreatedDto;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import reactor.core.publisher.Flux;
