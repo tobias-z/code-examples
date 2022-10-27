@@ -6,6 +6,7 @@ import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.entity.GatewayRoute;
 import io.github.tobiasz.integration.repository.GatewayRouteRepository;
 import io.github.tobiasz.integration.service.GatewayRouteService;
+import io.github.tobiasz.integration.service.RouteService;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,11 +21,17 @@ public class GatewayRouteServiceImpl implements GatewayRouteService {
 
     private final GatewayRouteRepository gatewayRouteRepository;
     private List<GatewayRouteDto> gatewayRouteDtoList;
+    private final RouteService routeService;
 
     @Override
     public Flux<GatewayRouteDto> getAllGatewayRoutes() {
         gatewayRouteDtoList = new ArrayList<>();
+        System.out.println("calling get all");
         return gatewayRouteRepository.findAll()
+            .map(gatewayRoute -> {
+                System.out.println("printing: " + gatewayRoute.getRequestPath());
+                return gatewayRoute;
+            })
             .map(GatewayRouteDto::fromEntity)
             .doOnNext(gatewayRouteDtoList::add);
     }

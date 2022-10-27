@@ -4,6 +4,7 @@ import static io.github.tobiasz.integration.Constants.CATCH_ALL_FALLBACK;
 
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.service.GatewayRouteService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
@@ -14,8 +15,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
-@Configuration
 @RequiredArgsConstructor
+@Configuration
 public class RouteConfig implements RouteLocator {
 
     private final GatewayRouteService gatewayRouteService;
@@ -24,25 +25,28 @@ public class RouteConfig implements RouteLocator {
     @Override
     public Flux<Route> getRoutes() {
         return gatewayRouteService.getAllGatewayRoutes()
+            .collectList()
             .zipWith(Mono.just(routeLocatorBuilder.routes()))
             .map(this::buildRoute)
-            .flatMap(builder -> builder.build().getRoutes());
+            .flatMapMany(builder -> builder.build().getRoutes());
     }
 
-    private Builder buildRoute(Tuple2<GatewayRouteDto, Builder> objects) {
+    private Builder buildRoute(Tuple2<List<GatewayRouteDto>, Builder> objects) {
         Builder builder = objects.getT2();
-        GatewayRouteDto gatewayRoute = objects.getT1();
+        List<GatewayRouteDto> gatewayRouteList = objects.getT1();
         // TODO: add stuff depending on the stuff in the database
-        builder.route(gatewayRoute.getId(), predicateSpec -> {
-            String requestPath = gatewayRoute.getRequestPath();
-            return predicateSpec
-                .path(requestPath)
-                .filters(f -> f
-                    // to use this circuitBreaker functionality the dependency 'spring-cloud-starter-circuitbreaker-reactor-resilience4j' is required
-                    .circuitBreaker(config -> config.setFallbackUri("forward:" + CATCH_ALL_FALLBACK))
-                    .rewritePath("/%s/(?<segment>.*)".formatted(requestPath), "/${segment}"))
-                .uri(gatewayRoute.getForwardUri());
-        });
+        for (GatewayRouteDto gatewayRoute : gatewayRouteList) {
+            builder.route(gatewayRoute.getId(), predicateSpec -> {
+                String requestPath = gatewayRoute.getRequestPath();
+                return predicateSpec
+                    .path(requestPath)
+                    .filters(f -> f
+                        // to use this circuitBreaker functionality the dependency 'spring-cloud-starter-circuitbreaker-reactor-resilience4j' is required
+                        .circuitBreaker(config -> config.setFallbackUri("forward:" + CATCH_ALL_FALLBACK))
+                        .rewritePath("/%s/(?<segment>.*)".formatted(requestPath), "/${segment}"))
+                    .uri(gatewayRoute.getForwardUri());
+            });
+        }
         return builder;
     }
 }

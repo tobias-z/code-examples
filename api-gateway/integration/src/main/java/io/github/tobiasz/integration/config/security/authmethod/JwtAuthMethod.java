@@ -14,7 +14,7 @@ public class JwtAuthMethod implements AuthMethod {
     @Override
     public Optional<Integer> authenticate(String token) {
         // TODO: Actually do something
-        return Optional.of(1);
+        return Optional.empty();
     }
 
 }

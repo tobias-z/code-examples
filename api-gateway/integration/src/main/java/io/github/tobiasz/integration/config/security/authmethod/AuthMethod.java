@@ -20,7 +20,7 @@ public interface AuthMethod {
 
         List<RemoveAfter> removeAfters = List.of(
             new RemoveAfter("/bob/**", "Basic"),
-            new RemoveAfter("/hello-world/**", "Bearer")
+            new RemoveAfter("/gateway/**", "Bearer")
         );
 
         for (RemoveAfter removeAfter : removeAfters) {

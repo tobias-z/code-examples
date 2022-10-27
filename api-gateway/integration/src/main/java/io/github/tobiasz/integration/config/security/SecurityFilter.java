@@ -6,6 +6,7 @@ import io.github.tobiasz.integration.config.security.util.AuthStatus;
 import io.github.tobiasz.integration.config.security.util.RouteRequestMatcher;
 import io.github.tobiasz.integration.dto.GatewayRouteDto;
 import io.github.tobiasz.integration.errorhandling.UnauthorizedException;
+import io.github.tobiasz.integration.errorhandling.UnknownRouteException;
 import io.github.tobiasz.integration.service.GatewayRouteService;
 import java.util.List;
 import java.util.Optional;
@@ -41,30 +42,35 @@ public class SecurityFilter extends WebFilterChainProxy {
             .map(this::toAuthDto)
             .flatMap(dto -> dto.authMethod.shouldAuthenticate(routeRequestMatcher, dto.gatewayRouteDto())
                 .zipWith(Mono.just(dto))
-                .flatMap(tuple -> {
+                .map(tuple -> {
                     AuthStatus authStatus = tuple.getT1();
                     if (authStatus.equals(AuthStatus.AUTHORIZED)) {
-                        return chain.filter(exchange);
+                        return Optional.of(exchange);
                     }
 
                     if (authStatus.equals(AuthStatus.INVALID_METHOD)) {
-                        return Mono.error(new UnauthorizedException());
+                        return Optional.<ServerWebExchange>empty();
                     }
 
                     AuthDto authDto = tuple.getT2();
                     Optional<Integer> userId = authDto.authMethod.authenticate(authDto.token());
 
                     if (userId.isEmpty()) {
-                        return Mono.error(new UnauthorizedException());
+                        return Optional.<ServerWebExchange>empty();
                     }
 
                     ServerWebExchange exchangeWithUserId = exchange.mutate().request(builder -> builder.header(
                         securityProperties.getUserIdHeaderName(),
                         String.valueOf(userId.orElseThrow()))
                     ).build();
-                    return chain.filter(exchangeWithUserId);
+                    return Optional.of(exchangeWithUserId);
                 })
-            );
+            )
+            .flatMap(exchangeOptional -> exchangeOptional
+                .map(chain::filter)
+                .orElse(Mono.error(new UnauthorizedException()))
+            )
+            .switchIfEmpty(Mono.error(new UnknownRouteException()));
     }
 
     private static Mono<String[]> getAuthHeader(HttpHeaders headers) {
